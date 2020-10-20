@@ -1,0 +1,461 @@
+
+#This is the Sage code accompanying the article "Models for modular curves without Hecke action" by Josha Box
+#In particular, we determine equations for modular curves $X(\mathrm{b}5,\mathrm{ns}7)$, $X(\mathrm{b}5,\mathrm{e}7)/\phi_7w_5$ and $X(\mathrm{b}5,\mathrm{e}7)/w_5$
+#This was written in Sage version 9.1 using Python 3.7.3
+
+#Our level is $5\cdot 7^2=245$ and we start with the modular symbols for $G=\Gamma_0(5\cdot 7^2)\cap \Gamma_1(7)$.
+#We also compute the old spaces, which correspond to $G_{35}=\Gamma_0(5\cdot 7)\cap \Gamma_1(7)$ and $G_{49}=\Gamma_0(7^2)\cap \Gamma_1(7)$.
+
+N = 5 * 7^2
+K = 7
+M = 5
+g1 = CRT([8,1], [K^2,M]) #g1 is 8 mod 49 and 1 mod 5 (8 is a generator of the subgroup of Z/49Z* of elements that are 1 mod 7)
+g2 = CRT([1,2], [K^2,M]) #g2 is 1 mod 49 and 2 mod 5 (2 is a generator of Z/5Z*)
+G = GammaH(N,[g1,g2])
+MS = ModularSymbols(G,sign=0)
+C = MS.cuspidal_subspace()
+print("C = {}".format(C))
+dim = C.dimension()
+print("\nC has dimension {} and M has dimension {}".format(dim, MS.dimension()))
+G35 = GammaH(35,[CRT([2,1],[5,7])])
+G49 = GammaH(49,[8])
+M35 = ModularSymbols(G35,sign=0)
+M49 = ModularSymbols(G49,sign=0)
+C35 = M35.cuspidal_subspace()
+C49 = M49.cuspidal_subspace()
+Cnew = C.new_subspace()
+C35new = C35.new_subspace()
+C49new = C49.new_subspace()
+assert C49new.dimension() == C49.dimension()
+assert C35new.dimension() == C35.dimension()
+
+#We need to compute the matrices that determine the cuspical spaces inside the full spaces of modular symbols. We transpose to take into account that matrices in Sage act from the right.︡
+
+Cb=C.basis()
+Cmat = Matrix([c.list() for c in Cb]).transpose()
+C35b = C35.basis()
+C49b = C49.basis()
+C35mat = Matrix([c.list() for c in C35b]).transpose()
+C49mat = Matrix([c.list() for c in C49b]).transpose()
+
+#We input the matrices whose fixed subspaces define the modular forms corresponding to our curves. These matrices were computed separately in \texttt{Magma}. We then conjugate these matrices by $\gamma_7:=\begin{pmatrix}7&0\\0&1\end{pmatrix}$ to obtain the matrices as they act on our spaces of modular symbols.
+
+g0 = [61,-55,10,-9] #Fixed space = X(b5,e7). Mod7 a generator for He7 subset SL_2(F_7), mod 5 the identity. 
+assert Matrix(2,2,g0).det()==1
+phi7 =[3,1,-10,-3] #Mod 7 an element of Hns7 that is not in He7, mod 5 in Gamma_0(5). So this indeed corresponds to phi_7.
+assert Matrix(2,2,phi7).det()==1
+w5 = [15,1,5*569,5*38] #Corresponds to the Atkin--Lehner involution w_5: mod 7 in Ge7 and a,c,d div by 5. Also:
+assert Matrix(2,2,w5).det()==5
+phi7w5 = (Matrix(2,2,phi7)*Matrix(2,2,w5)).list() 
+gens = [g0,phi7,w5,phi7w5]
+gmats = [Matrix(2,2,[g[0],g[1]/K,g[2]*K,g[3]]) for g in gens] #Here we conjugate by gamma_K
+Bmats=[Matrix(2,2,[6,5/K,-5*K,-4]),matrix.identity(2)] 
+
+
+#Suppose that $gs$ is a list of matrices $g \in \mathrm{GL}_2^+(\mathbb{\Q})$ such that $f \mapsto \sum_{g\in gs}f|g$ corresponds to a linear map between two spaces of modular forms. This, in turn, corresponds to a linear map $C1\to C2$ between the corresponding spaces of modular symbols (in the opposite direction). The below function computes this map explicitly in terms of the known bases. Note the transposition here (and throughout) because matrices in Sage act on vectors from the right. We apply this function to our generators.
+
+def gen_to_mat(gs,C1,C2):
+    C1b = C1.basis()
+    C2mat = Matrix([c.list() for c in C2.basis()]).transpose()
+    ims =  [ C2(sum([sum([ s[0] * sum([ mm[0]*mm[1].manin_symbol_rep()
+           for mm in s[1].apply(g.list())])
+           for s in c.modular_symbol_rep()])
+           for g in gs]))
+           for c in C1b]
+    return Matrix([(C2mat\vector(im.list())).list() for im in ims]).transpose(),ims
+
+gs = [gen_to_mat([g.inverse()],C,C)[0] for g in gmats] 
+Bs = [gen_to_mat([B.inverse()],C,C)[0] for B in Bmats]
+J = C.star_involution().matrix().transpose()
+Qdim = QQ^(dim)
+Cplus = (J-1).transpose().kernel_on(Qdim) #We also compute the J-invariant subspace of C
+
+#Next, we determine the maps from the old spaces of modular symbols. For this, we input the coset representatives computed separately in \texttt{Magma}, using an algorithm of Stein.
+
+D5 = Matrix(2,2,[1,0,0,5])
+D7 = Matrix(2,2,[1,0,0,7])
+CosetReps351 = [Matrix(2,2,g) for g in [[1 ,0,0, 1],[ 134,  -25, 595 ,-111],[ -76 ,  21,-105 ,  29],[-27  , 5, 70 ,-13],[ 246 ,-155, 665, -419],[-27,  44,-35 , 57],[-13 , 10, 35 ,-27]]]
+CosetReps357 = [Matrix(2,2,g) for g in [[1 ,0,0 ,1],[ 22, -17, 35 ,-27],[-27 , 44,-35 , 57],[-27,  17,-35 , 22],[1, 1,0 ,1],[ 43,  -8, 70 ,-13],[ -6,   5,-35 , 29]]]
+CosetReps491 = [Matrix(2,2,g) for g in [ [ -41  ,  9,-196 ,  43],[ -6 ,  1,-49 ,  8],[ 29 , -8, 98 ,-27],[1, 1,0, 1],[ 43 , -9,196 ,-41],[-13 ,  4,-49 , 15]]]
+CosetReps495 = [Matrix(2,2,g) for g in [[1, 0,0, 1],[ 8 ,-1,49, -6],[ -76 ,   9,-245 ,  29],[ 1 ,-1, 0 , 1],[-13 ,  4,-49 , 15],[-20 ,  9,-49 , 22]]]
+Tr357_mat, Tr357_ims = gen_to_mat([D7*gam for gam in CosetReps357],C35,C) 
+Tr351_mat, Tr351_ims = gen_to_mat(CosetReps351,C35,C)
+Tr491_mat, Tr491_ims = gen_to_mat(CosetReps491,C49,C)
+Tr495_mat, Tr495_ims = gen_to_mat([D5*gam for gam in CosetReps495],C49,C) 
+assert [Tr357_mat.rank(),Tr351_mat.rank(),Tr491_mat.rank(),Tr495_mat.rank()] == [14,14,6,6]
+Tr357_mat = Tr357_mat/7 #Div by 7 cancels contribution from the determinant of D7
+Tr495_mat = Tr495_mat/5 #Div by 5 cancels contribution from the determinant of D5
+
+#We check that their composition with the $B_d$ operators is as it should be.
+
+I14 = matrix.identity(14)
+I6 = matrix.identity(6)
+
+def Bdmatrix(CM,CMmat,t):
+    ims = [CM(sum([ s[0] * sum([ mm[0]*mm[1].manin_symbol_rep()
+           for mm in s[1].apply([t,0,0,1])])
+           for s in c.modular_symbol_rep()])) for c in Cb]
+    return Matrix([(CMmat\vector(im.list())).list() for im in ims]).transpose()*t #Mult. by t cancels the contribution from the determinant
+
+B351_mat = Bdmatrix(C35,C35mat,1)
+B357_mat = Bdmatrix(C35,C35mat,7)
+B491_mat = Bdmatrix(C49,C49mat,1)
+B495_mat = Bdmatrix(C49,C49mat,5)
+
+assert Tr351_mat.transpose()*B351_mat.transpose() == 7*I14
+assert Tr357_mat.transpose()*B357_mat.transpose() == 7*I14
+assert Tr491_mat.transpose()*B491_mat.transpose() == 6*I6
+assert Tr495_mat.transpose()*B495_mat.transpose() == 6*I6
+
+#We define the Hecke operators T_2 and T_3 which will allow us to compute Hecke eigenvectors.
+
+T3 = C.hecke_matrix(3)
+T3plus=T3.restrict(Cplus)
+T2 = C.hecke_matrix(2)
+T2plus = T2.restrict(Cplus)
+
+#Next, we define all the number fields involved, and the embeddings between them.
+
+prec=200
+Qrt2.<rt2>=QuadraticField(2)
+Q21.<zeta21>=CyclotomicField(21)
+Q7.<zeta7>=CyclotomicField(7,embedding=zeta21^(3*4))
+Q7plus.<z7plus>,Q7plus_to_Q7 = Q7.subfield(zeta7+zeta7^-1)
+Q3.<zeta3>=CyclotomicField(3,embedding=zeta21^-7)
+Q3_to_Q21 = Q3.hom([Q21(zeta3)])
+#We choose these embeddings to make them commute with embeddings to follow
+Q7_to_Q21 = Q7.hom([Q21(zeta7)])
+x21=polygen(Q21,'x21')
+Q21rt2.<r2>=NumberField(x21^2-2)
+Q21rt17.<r17>=NumberField(x21^2-17)
+x7=polygen(Q7,'x7')
+x3=polygen(Q3,'x3')
+Q3rt2.<rrr2>=NumberField(x3^2-2)
+Q3rt17.<rrr17>=NumberField(x3^2-17)
+
+sigma_Q21=Q21.hom([zeta21])
+def sigma(a):
+    K=a.parent()
+    if K==Q21:
+        return sigma_Q21(a)
+    else: return K.hom([-K.0])(a)
+
+Q7plusq.<q7p>=PowerSeriesRing(Q7plus,prec)
+Q3rt2_to_Q21rt2=Q3rt2.hom([r2])
+Qrt2_to_Q3rt2 = Qrt2.hom([rrr2])
+Q3rt17_to_Q21rt17=Q3rt17.hom([r17])
+Q21_to_Q21rt2=Q21.hom([Q21rt2(zeta21)])
+Q21_to_Q21rt17 = Q21.hom([Q21rt17(zeta21)])
+
+#We check that the different embeddings commute as they should.
+assert Q21_to_Q21rt2(Q3_to_Q21(zeta3)) == Q3rt2_to_Q21rt2(Q3rt2(zeta3))
+assert Q21_to_Q21rt17(Q3_to_Q21(zeta3)) == Q3rt17_to_Q21rt17(Q3rt17(zeta3))
+
+cc_Q21 = Q21.hom([zeta21^-1]) 
+def cc(a):
+    K=a.parent()
+    if K == Q21:
+        return cc_Q21(a)
+    else:
+        V,emb,embinv=K.relative_vector_space()
+        return sum([cc_Q21(a.list()[i])*emb(V.basis()[i]) for i in range(V.dimension())])
+            
+assert cc(Q21rt2(zeta21)) == Q21rt2(zeta21^-1) #check
+assert cc(Q21rt17(zeta21)) == Q21rt17(zeta21^-1) #check        
+
+#Next, we define sigma_d: zeta_7 |--> zeta_7^d on extensions of Q(zeta_7) for d in {2,-1}
+P2_Q21=Q21.hom([zeta21^-5]) #-5 = 2 mod 7 and -5=1 mod 3
+Pm1_Q21=Q21.hom([zeta21^13]) #13 = -1 mod 7 and 13 = 1 mod 3
+
+def P2(a):
+    F=a.parent()
+    if F == Q21:
+        return P2_Q21(a)
+    else:
+        V,emb,embinv=F.relative_vector_space()
+        return sum([P2_Q21(a.list()[i])*emb(V.basis()[i]) for i in range(V.dimension())])
+        
+def Pm1(a):
+    F=a.parent()
+    if F == Q21:
+        return Pm1_Q21(a)
+    else:
+        V,emb,embinv=F.relative_vector_space()
+        return sum([Pm1_Q21(a.list()[i])*emb(V.basis()[i]) for i in range(V.dimension())])
+        
+
+#We now define the twist operators.
+
+I=matrix.identity(dim)
+chi = [eps for eps in DirichletGroup(K,base_ring=Q3)
+           if eps(3)==-zeta3][0]
+assert chi.order()==6
+
+def gauss_sum(eps):
+    if eps.order() == 1:
+        return Q21(1)
+    else: return sum([Q21(zeta7)^i*Q21(eps(i)) for i in range(K)])
+
+SK = matrix(2,2,[1,1/K,0,1])
+SK_mat = gen_to_mat([SK],C,C)[0].change_ring(Q3)
+SKpowers = [I.change_ring(Q3)]
+while len(SKpowers)<K: SKpowers+=[SK_mat*SKpowers[-1]]
+SKpowersQ3 = [M.change_ring(Q3) for M in SKpowers]
+
+def Rop(eps):
+    if eps.order()==1:
+        return SKpowersQ3[0]^0
+    else: return sum([(eps^-1)(i)*SKpowersQ3[i] for i in range(K)])
+
+#We are now ready to define the modular symbols corresponding to f35,g35,f49,f0,f1,f2 (all up to constant, of course) and their twists by ep^3 under the pairing. These modular symbols are the "generators" for the real twist orbit spaces.
+
+a2s=[1,0,(-1+rrr17)/2,-2,rrr2,1+rrr2]
+a3s=[0,1,-(1+rrr17)/2,-3,-(1+rrr2),1-rrr2] #It suffices to determine 1-dimensional common eigenspaces for T_2 and T_3
+a2stw=[chi(2)^3*a for a in a2s] #Since we need generators for the *real* twist orbit spaces, we also compute twists by chi^3
+a3stw=[chi(3)^3*a for a in a3s]
+assert a2s == a2stw
+assert all([a3s[i] == -a3stw[i] for i in range(len(a3s))])
+a2s=a2s+[a2stw[i] for i in [1..5]]
+a3s=a3s+[a3stw[i] for i in [1..5]]
+Tpluslist=[T2plus,T3plus]
+
+N35=Newforms(G35,names='a')
+N49=Newforms(G49,names='a')
+Nnew=Newforms(G,names='a')
+NN=N49+N35+Nnew
+
+oldspace491=Tr491_mat.column_space()
+oldspace495=Tr495_mat.column_space()
+oldspace49=oldspace491+oldspace495
+oldspace351=Tr351_mat.column_space()
+oldspace357=Tr357_mat.column_space()
+oldspace35=oldspace351+oldspace357
+assert oldspace35.dimension() == oldspace351.dimension() + oldspace357.dimension()
+assert oldspace49.dimension() == oldspace491.dimension() + oldspace495.dimension()
+
+#Only computes the projection correctly when mu is in the old space of level 35
+def pi35(mu):
+    Kf=mu.parent().base_ring()
+    if mu in oldspace35.change_ring(Kf):
+        oldsp1 = oldspace351.change_ring(Kf)
+        oldsp7=oldspace357.change_ring(Kf)
+        oldsp=Qdim.change_ring(Kf).subspace_with_basis(oldsp1.basis()+oldsp7.basis())
+        bb = Matrix(oldsp.basis()).solve_left(mu)
+    else:
+        return mu
+    dd=ZZ(oldsp.dimension()/2)
+    mu1 = sum([bb[i]*oldsp.basis()[i] for i in range(dd)])
+    mu7 = sum([bb[i+dd]*oldsp.basis()[i+dd] for i in range(dd)])
+    assert mu1+mu7 == mu
+    return B351_mat*mu1
+
+#flist is list of Fourier coefficients of modular form
+#check is a range for the Fourier coefficients of f that agree with those of pr(35) (e.g. check=6 will do, but 7 won't)
+#Only works if f is in the old space and a_1(f)=1
+def pr35(flist,check):
+    K=flist[2].parent()
+    if K.is_absolute():
+        folds=[f for f in N35 if all([flist[i].minpoly().coefficients() == f.hecke_eigenvalue_field()(f[i]).minpoly().coefficients() for i in range(check)])]
+    else: folds=[f for f in N35 if all([flist[i].absolute_minpoly().coefficients() == f.hecke_eigenvalue_field()(f[i]).minpoly().coefficients() for i in range(check)])]
+    assert len(folds) == 1
+    fold=folds[0]
+    embs=[e for e in fold.hecke_eigenvalue_field().embeddings(K) if all([e(fold[i]) == flist[i] for i in range(check)])]
+    assert len(embs) == 1
+    return [embs[0](fold[i]) for i in range(prec)]
+
+def chartwist(flist,i):
+    return [Q3_to_Q21(chi(n)^i)*flist[n] for n in range(len(flist))]
+
+
+#This function simultaneously computes a real twist orbit space and its corresponding space of modular forms under f |--> gamma_f. Here alist is a list of coefficients a_0(f),a_1(f),a_2(f),...,a_k(f) of a Hecke newform, from which we generate the real twist orbit space. The list Tpluslist is parallel to the prime values in alist, and gives the Tp-operators on the +1-eigenspace of the cuspidal modular symbols space.
+
+def make_real_twist_orbit(alist,Kf_to_KK,Tpluslist,prec):
+    Kf=Kf_to_KK.domain()
+    fpos=[g for g in NN if all([g.hecke_eigenvalue_field()(g[i]).minpoly().coefficients() == Kf(alist[i]).minpoly().coefficients() for i in range(len(alist))])]
+    assert len(fpos) == 1
+    f=fpos[0] #this is the corresponding eigenform, but not defined over the right field
+    F=f.hecke_eigenvalue_field()
+    embs=[e for e in F.embeddings(Kf) if all([e(f[i]) == alist[i] for i in range(len(alist))])]
+    assert len(embs)==1
+    emb=embs[0]
+    flist=[cc(Kf_to_KK(emb(f[i]))) for i in range(prec)] #the list of coefficients for the eigenform, in the right field, and complex conjugated
+    
+    if f in N49:
+        subsp=Tr491_mat.column_space().change_ring(Kf)
+    elif f in N35:
+        subsp=Tr351_mat.column_space().change_ring(Kf)
+    else:
+        subsp=Qdim.change_ring(Kf)
+    intsn=(QQ^(Integers()(C.dimension()/2))).change_ring(Kf)
+    for i in range(len(Tpluslist)):
+        T=Tpluslist[i]
+        intsn=intsn.intersection((T.change_ring(Kf)-Kf(alist[i+2])).kernel())
+    H=Qdim.change_ring(Kf).subspace([x*Cplus.basis_matrix().change_ring(Kf) for x in intsn.basis()]).intersection(subsp)
+    assert H.dimension() == 1
+    mu=H.basis()[0] #the modular symbol corresponding to f, up to constant
+    
+    LKK.<qKK>=PowerSeriesRing(Kf_to_KK.codomain(),prec)
+    mutwists=[]
+    ftwists=[]
+    powerlist=[]
+    for i in range(3):
+        powerlist.append(i)
+        ftw=chartwist(flist,2*i)
+        ftwists+=[[Q21(gauss_sum(chi^(-2*i)))*a for a in ftw]]
+        mutw=Rop(chi^(-2*i))*mu
+        mutwists+=[mutw]
+        if mutw in oldspace35.change_ring(Kf):
+            mutwists+=[Tr357_mat.change_ring(Kf)*pi35(mutw)/len(CosetReps357)]
+            ftwpr35=pr35(ftw,len(alist))
+            ftwpr35B7=sum([Q21(gauss_sum(chi^(-2*i)))*ftwpr35[j]*qKK^(7*j) for j in range(prec)])
+            ftwists+=[ftwpr35B7.padded_list(prec)] #We apply B7
+            powerlist.append(i)
+        elif mutw in oldspace49.change_ring(Kf):
+            mutwists+=[Tr495_mat.change_ring(Kf)*(B491_mat.change_ring(Kf)*mutw)/len(CosetReps495)]
+            ftwB7=sum([Q21(gauss_sum(chi^(-2*i)))*ftw[j]*qKK^(5*j) for j in range(prec)])
+            ftwists+=[ftwB7.padded_list(prec)]
+            powerlist.append(i)
+    return Qdim.change_ring(Kf).subspace_with_basis(mutwists),ftwists, powerlist
+    
+fixed_spaces=[(gmat.transpose()-matrix.identity(dim)).kernel() for gmat in gs]
+Gamma_fixed_spaces = [fixed_spaces[0].intersection(fixed_spaces[1]),fixed_spaces[0].intersection(fixed_spaces[2]),fixed_spaces[0].intersection(fixed_spaces[3]),fixed_spaces[0].intersection(fixed_spaces[1].intersection(fixed_spaces[2]))]
+Kf_to_KKs=[Q3_to_Q21,Q3_to_Q21,Q3rt17_to_Q21rt17,Q3_to_Q21,Q3rt2_to_Q21rt2,Q3rt2_to_Q21rt2,Q3_to_Q21,Q3rt17_to_Q21rt17,Q3_to_Q21,Q3rt2_to_Q21rt2,Q3rt2_to_Q21rt2]
+
+def first_nonzero_cf(a):
+    for b in a:
+        if not b == 0:
+            return b
+    return 0
+    
+#The below function computes a basis of q-expansions for S_2(Gamma,Q(zeta_K)+) for each of the four Gamma we consider. 
+#However, the equations satisfied by this basis do not tend to be defined over QQ. For that, we need to consider also the matrices in G of determinant unequal to 1.
+#The function computes each twist orbit and intersects with the fixed space by Gamma, then determines a basis for this intersection in terms of the twist orbit basis
+def fixed_cusp_forms(a2s,a3s,Tpluslist,Kf_to_KKs,prec,Gamma_fixed_spaces):
+    FCF=[]
+    for i in range(len(a2s)):
+        alist=[0,1,a2s[i],a3s[i]]
+        Kf_to_KK=Kf_to_KKs[i]
+        KK=Kf_to_KK.codomain()
+        Q21_to_KK=Q21.hom([KK(zeta21)])
+        real_twist_orbit_ms,twist_mfs,pl=make_real_twist_orbit(alist,Kf_to_KK,Tpluslist,prec)
+        FCF_orbit=[]
+        for GFS in Gamma_fixed_spaces:
+            fixed_space_basis=GFS.change_ring(Kf_to_KK.domain()).intersection(real_twist_orbit_ms).basis()
+            fixed_basis_cfs=[real_twist_orbit_ms.basis_matrix().solve_left(mu).list() for mu in fixed_space_basis]
+            fixed_basis_cfs_cc=[[cc(Kf_to_KK(a)) for a in mulist] for mulist in fixed_basis_cfs]
+            fixed_cusp_forms_orbit_raw=[sum([clist[i]*vector(twist_mfs[i]) for i in range(len(clist))]) for clist in fixed_basis_cfs_cc]
+            if KK.relative_degree() == 2:
+                fixed_cusp_forms_orbit_ns=sum([[f+vector([sigma(a) for a in f.list()]),(f-vector([sigma(a) for a in f.list()]))/KK.gen()] for f in fixed_cusp_forms_orbit_raw],[])
+            else: fixed_cusp_forms_orbit_ns=fixed_cusp_forms_orbit_raw
+            fixed_cusp_forms_orbit_sc=[vector([Q7plus_to_Q7.preimage(Q7_to_Q21.preimage(Q21_to_KK.preimage(a))) for a in (f/first_nonzero_cf(f.list())).list()]) for f in fixed_cusp_forms_orbit_ns]
+            FCF_orbit+=[fixed_cusp_forms_orbit_sc]
+        FCF+=[FCF_orbit]
+    return [sum([FCF[i][j] for i in range(len(FCF))],[]) for j in range(len(Gamma_fixed_spaces))]
+
+
+#This computes the matrix for the action of the 2x2 matrix Pd (corr. to Galois conj: zeta_K |--> zeta_K^d) on the basis zeta_K^j*g(chi)^i * e_{i,j}, where the e_{i,j} are linearly independent vectors on which Pd acts trivially.
+#Powerlist is a list of non-negative integers corresponding to the powers of chi that we tensored with in the twist orbit
+def Pdmatrix(Pd,d,powerlist):
+    n=len(powerlist)
+    small_diag=diagonal_matrix([Q3(Pd(gauss_sum(chi^(-2*i)))/gauss_sum(chi^(-2*i))) for i in powerlist])
+    Zn=matrix.zero(n)
+    list=[]
+    for i in range(euler_phi(K)):
+        j=(d*i)%K
+        if j == K-1: #Because zeta_K^{K-1} = -1 - zeta_K - zeta_K^2 - ... - zeta_K^{K-2}
+            list.append([-small_diag for k in range(euler_phi(K))])
+        else:
+            Zns=[Zn for k in range(euler_phi(K)-1)]
+            Zns.insert(j,small_diag)
+            list.append(Zns)
+    return block_matrix(list)
+
+#The final element in Gamma_fixed_spaces corresponds to X(b5,ns7)/w_5. For this group 
+Gamma_fixed_spaces=[Gamma_fixed_spaces[i] for i in range(len(Gamma_fixed_spaces)-1)]
+
+#The below function computes bases of cusp forms in S_2(Gamma,Q(zeta_K)^+) for Gamma corresponding to Gamma_fixed_spaces. The equations between these cusp forms are defined over QQ. Here Bmats, Pds and ds are parallel lists such that Pd is the matrix corresponding to the action of Matrix(2,2,[d,0,0,1]) and the elements Bmats[i]^{-1}*Pd[i] correspond to the action of elements of G that generate G together with Gamma and have determinant >1.
+
+def fixed_cusp_forms_QQ(a2s,a3s,Tpluslist,Kf_to_KKs,prec,Gamma_fixed_spaces,Bmats,Pds,ds):
+    FCF=[]
+    twist_orbit_indices=[]
+    for i in range(len(a2s)):
+        alist=[0,1,a2s[i],a3s[i]]
+        Kf_to_KK=Kf_to_KKs[i]
+        KK=Kf_to_KK.codomain()
+        Q21_to_KK=Q21.hom([KK(zeta21)])
+        real_twist_orbit_ms,twist_mfs,powerlist=make_real_twist_orbit(alist,Kf_to_KK,Tpluslist,prec)
+        #Each Bmats[i] acts on the twist orbit spaces, and maps the fixed subpace of a real twist orbit space into the real twist orbit space.
+        #We know that Pd acts on twist_mfs as the matrix Pdmatrix(Pd,d). We translate this to an action on modular symbols.
+        #Then the product B*Pd must map the fixed subspace of a real twist orbit space into itself, and we compute the subspace fixed by all these B*Pd.
+        #This action of Pd is only Q-linear, so we must descent to Q-vector spaces using the basis 1,zeta,zeta^2,...,zeta^{K-1}.
+        twist_orbit_index=[]
+        FCF_orbit=[]
+        for GFS in Gamma_fixed_spaces:
+            fixed_space_basis=GFS.change_ring(Kf_to_KK.domain()).intersection(real_twist_orbit_ms).basis()
+            if len(fixed_space_basis) > 0:
+                fixed_basis_cfs=[real_twist_orbit_ms.basis_matrix().solve_left(mu).list() for mu in fixed_space_basis]
+                fixed_basis_block=block_diagonal_matrix([Matrix(fixed_basis_cfs) for i in range(euler_phi(K))])
+                
+                fixed_ms_space_QQ=Kf_to_KK.domain()^(euler_phi(K)*len(fixed_space_basis))
+                for k in range(len(Bmats)):
+                    Bmat=Bmats[k]
+                    Pd=Pds[k]
+                    d=ds[k]
+                    B_imgs=[Bmat*mu for mu in fixed_space_basis]
+                    assert all([J*mu == mu for mu in B_imgs]) #Indeed Bmat maps the fixed space into the +1-eigenspace.
+                    B_imgs_cfs=[real_twist_orbit_ms.basis_matrix().solve_left(mu).list() for mu in B_imgs]
+                    #These are the coefficients for the images of fixed_space_basis, in terms of the basis real_twist_orbit_ms
+                    #Note that B acts C-linearly, so on Q-vector spaces it acts as a block diagonal matrix.
+                    B_imgs_block=block_diagonal_matrix([Matrix(B_imgs_cfs) for j in range(euler_phi(K))]) 
+                    fixed_ms_space_QQ=fixed_ms_space_QQ.intersection((fixed_basis_block.solve_left(B_imgs_block*Pdmatrix(Pd,d,powerlist).inverse())-matrix.identity(euler_phi(K))).kernel())
+                    
+                fmssQQ_cc=[[cc(Kf_to_KK(a)) for a in v.list()] for v in fixed_ms_space_QQ.basis()] 
+                fixed_basis_cfs_cc=[[cc(Kf_to_KK(a)) for a in mulist] for mulist in fixed_basis_cfs]
+                fixed_cusp_forms_orbit_raw=[sum([clist[i]*vector(twist_mfs[i]) for i in range(len(clist))]) for clist in fixed_basis_cfs_cc]
+                fcf_ext = sum([[vector(Q21(zeta7^(-i))*f) for f in fixed_cusp_forms_orbit_raw] for i in range(euler_phi(K))],[])
+                fsols=[sum([fmssQQ_cc[i][j]*fcf_ext[j] for j in range(len(fcf_ext))]) for i in range(len(fmssQQ_cc))]
+                if KK.relative_degree() == 2:
+                    fixed_cusp_forms_orbit_ns=sum([[f+vector([sigma(a) for a in f.list()]),(f-vector([sigma(a) for a in f.list()]))/KK.gen()] for f in fsols],[])
+                else: 
+                    fixed_cusp_forms_orbit_ns=fsols    
+                fixed_cusp_forms_orbit_Q7plus=[vector([Q7plus_to_Q7.preimage(Q7_to_Q21.preimage(Q21_to_KK.preimage(a))) for a in f.list()]) for f in fixed_cusp_forms_orbit_ns]
+                FCF_orbit+=[fixed_cusp_forms_orbit_Q7plus]
+                twist_orbit_index+=[[i for j in range(len(fixed_cusp_forms_orbit_Q7plus))]]
+            else: 
+                FCF_orbit+=[[]]
+                twist_orbit_index+=[[]]
+        FCF+=[FCF_orbit]
+        twist_orbit_indices+=[twist_orbit_index]     
+    
+    #We return not only the cusp forms, but also a parallel list of indices that tell us which real twist orbit space the cusp form is in.
+    return [sum([FCF[i][j] for i in range(len(FCF))],[]) for j in range(len(Gamma_fixed_spaces))], [sum([twist_orbit_indices[i][j] for i in range(len(FCF))],[]) for j in range(len(Gamma_fixed_spaces))]
+   
+fs,tos=fixed_cusp_forms_QQ(a2s,a3s,Tpluslist,Kf_to_KKs,prec,Gamma_fixed_spaces,Bs,[P2,Pm1],[2,-1])
+
+assert all([len(fs[0]) == 6, len(fs[1]) == 8, len(fs[2]) == 5])
+
+def int_qexp(f):
+    den=QQ(LCM([f[i].denominator() for i in range(prec)]))
+    return den*sum([f[i]*q7p^i for i in range(prec)])
+fs_qexps=[[int_qexp(f) for f in AA] for AA in fs]
+
+
+def intersection_of_quadrics(fs,prec2):
+    n=len(fs)
+    R=PolynomialRing(QQ,'X',n)
+    mons2=(sum([R.gens()[k] for k in range(n)])^2).monomials()
+    h2s=[m(fs) for m in mons2]
+    relmat = Matrix([[Q7plus(list(G)[i]) for i in range(prec2)] for G in h2s])
+    polsX = [sum([c*m.change_ring(Q7plus) for c,m in zip(relmat.kernel().basis()[i],mons2)]) for i in range(relmat.kernel().dimension())]
+    dens = [p.denominator() for p in polsX]
+    polsX = [R(dens[i]*polsX[i]) for i in range(len(polsX))]
+    return Curve(polsX)
+
+Xb5ns7=intersection_of_quadrics(fs_qexps[0],50)
+X1=intersection_of_quadrics(fs_qexps[1],50)
+X2=intersection_of_quadrics(fs_qexps[2],50)
+assert all([Xb5ns7.genus() == 6, X1.genus() == 8, X2.genus() == 5])
+print(Xb5ns7)
+print(X1)
+print(X2)
+print(tos)
