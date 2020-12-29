@@ -1,6 +1,7 @@
 
 #This is the Sage code accompanying the article "Models for modular curves without Hecke action" by Josha Box
-#In particular, we determine equations for modular curves $X(\mathrm{b}5,\mathrm{ns}7)$, $X(\mathrm{b}5,\mathrm{e}7)/\phi_7w_5$ and $X(\mathrm{b}5,\mathrm{e}7)/w_5$
+
+#We determine equations for modular curves X(b5,e7), X(b5,e7)/phi_7w_5 and X(b5,e7)/w_5.
 #This was written in Sage version 9.1 using Python 3.7.3
 
 #Our level is $5\cdot 7^2=245$ and we start with the modular symbols for $G=\Gamma_0(5\cdot 7^2)\cap \Gamma_1(7)$.
@@ -11,48 +12,47 @@ K = 7
 M = 5
 g1 = CRT([8,1], [K^2,M]) #g1 is 8 mod 49 and 1 mod 5 (8 is a generator of the subgroup of Z/49Z* of elements that are 1 mod 7)
 g2 = CRT([1,2], [K^2,M]) #g2 is 1 mod 49 and 2 mod 5 (2 is a generator of Z/5Z*)
-G = GammaH(N,[g1,g2])
+G = GammaH(N,[g1,g2]) #This is Gamma_0(MK^2) \cap \Gamma_1(K)
 MS = ModularSymbols(G,sign=0)
-C = MS.cuspidal_subspace()
-print("C = {}".format(C))
+C = MS.cuspidal_subspace() #This is H_1(X_{Gamma_0(MK^2)\cap \Gamma_1(K)},\C)
+assert C.dimension() == 122 #The dimension is 2*(genus of X_{\Gamma_0(MK^2)\cap \Gamma_1(K)}).
 dim = C.dimension()
-print("\nC has dimension {} and M has dimension {}".format(dim, MS.dimension()))
-G35 = GammaH(35,[CRT([2,1],[5,7])])
-G49 = GammaH(49,[8])
+G35 = GammaH(35,[CRT([2,1],[5,7])]) #Congruence subgroup corresponding to old subspace of level 35
+G49 = GammaH(49,[8]) #Congruence subgroup corr to old subspace of level 49
 M35 = ModularSymbols(G35,sign=0)
 M49 = ModularSymbols(G49,sign=0)
-C35 = M35.cuspidal_subspace()
-C49 = M49.cuspidal_subspace()
+C35 = M35.cuspidal_subspace() #Level 35 old space of modular symbols
+C49 = M49.cuspidal_subspace() #Level 49 old space of modular symbols
 Cnew = C.new_subspace()
 C35new = C35.new_subspace()
 C49new = C49.new_subspace()
-assert C49new.dimension() == C49.dimension()
-assert C35new.dimension() == C35.dimension()
+assert C49new.dimension() == C49.dimension() 
+assert C35new.dimension() == C35.dimension() #There are no further old spaces
 
-#We need to compute the matrices that determine the cuspical spaces inside the full spaces of modular symbols. We transpose to take into account that matrices in Sage act from the right.︡
+#We compute the matrices that determine the embedding from the old spaces into the level N space of modular symbols. We transpose to take into account that matrices in Sage act from the right.︡
 
-Cb=C.basis()
-Cmat = Matrix([c.list() for c in Cb]).transpose()
 C35b = C35.basis()
 C49b = C49.basis()
 C35mat = Matrix([c.list() for c in C35b]).transpose()
 C49mat = Matrix([c.list() for c in C49b]).transpose()
 
-#We input the matrices whose fixed subspaces define the modular forms corresponding to our curves. These matrices were computed separately in \texttt{Magma}. We then conjugate these matrices by $\gamma_7:=\begin{pmatrix}7&0\\0&1\end{pmatrix}$ to obtain the matrices as they act on our spaces of modular symbols.
+#We input the matrices whose fixed subspaces define the modular forms corresponding to our curves. These matrices were computed separately. We then conjugate these matrices by $\gamma_7:=\begin{pmatrix}7&0\\0&1\end{pmatrix}$ to obtain the matrices as they act on our spaces of modular symbols.
 
 g0 = [61,-55,10,-9] #Fixed space = X(b5,e7). Mod7 a generator for He7 subset SL_2(F_7), mod 5 the identity. 
 assert Matrix(2,2,g0).det()==1
 phi7 =[3,1,-10,-3] #Mod 7 an element of Hns7 that is not in He7, mod 5 in Gamma_0(5). So this indeed corresponds to phi_7.
 assert Matrix(2,2,phi7).det()==1
-w5 = [15,1,5*569,5*38] #Corresponds to the Atkin--Lehner involution w_5: mod 7 in Ge7 and a,c,d div by 5. Also:
+w5 = [2890, 193 , -8685, -580] #Corresponds to the Atkin--Lehner involution w_5: mod 7 in Ge7 and a,c,d div by 5. Also:
 assert Matrix(2,2,w5).det()==5
 phi7w5 = (Matrix(2,2,phi7)*Matrix(2,2,w5)).list() 
 gens = [g0,phi7,w5,phi7w5]
 gmats = [Matrix(2,2,[g[0],g[1]/K,g[2]*K,g[3]]) for g in gens] #Here we conjugate by gamma_K
-Bmats=[Matrix(2,2,[6,5/K,-5*K,-4]),matrix.identity(2)] 
+Bmats=[Matrix(2,2,[6,5/K,-5*K,-4]),matrix.identity(2)] #Bmats[0] = B from paper, conjugated by gamma_K.
 
 
-#Suppose that $gs$ is a list of matrices $g \in \mathrm{GL}_2^+(\mathbb{\Q})$ such that $f \mapsto \sum_{g\in gs}f|g$ corresponds to a linear map between two spaces of modular forms. This, in turn, corresponds to a linear map $C1\to C2$ between the corresponding spaces of modular symbols (in the opposite direction). The below function computes this map explicitly in terms of the known bases. Note the transposition here (and throughout) because matrices in Sage act on vectors from the right. We apply this function to our generators.
+#Suppose that $gs$ is a list of matrices $g \in \mathrm{GL}_2^+(\mathbb{\Q})$ such that $f \mapsto \sum_{g\in gs}f|g$ corresponds to
+#a linear map between two spaces of modular forms. This, in turn, corresponds to a linear map $C1\to C2$ between the corresponding
+#spaces of modular symbols (in the opposite direction). The below function computes this map explicitly in terms of the known bases.
 
 def gen_to_mat(gs,C1,C2):
     C1b = C1.basis()
@@ -72,16 +72,14 @@ Cplus = (J-1).transpose().kernel_on(Qdim) #We also compute the J-invariant subsp
 
 #Next, we determine the maps from the old spaces of modular symbols. For this, we input the coset representatives computed separately in \texttt{Magma}, using an algorithm of Stein.
 
-D5 = Matrix(2,2,[1,0,0,5])
-D7 = Matrix(2,2,[1,0,0,7])
-CosetReps351 = [Matrix(2,2,g) for g in [[1 ,0,0, 1],[ 134,  -25, 595 ,-111],[ -76 ,  21,-105 ,  29],[-27  , 5, 70 ,-13],[ 246 ,-155, 665, -419],[-27,  44,-35 , 57],[-13 , 10, 35 ,-27]]]
-CosetReps357 = [Matrix(2,2,g) for g in [[1 ,0,0 ,1],[ 22, -17, 35 ,-27],[-27 , 44,-35 , 57],[-27,  17,-35 , 22],[1, 1,0 ,1],[ 43,  -8, 70 ,-13],[ -6,   5,-35 , 29]]]
-CosetReps491 = [Matrix(2,2,g) for g in [ [ -41  ,  9,-196 ,  43],[ -6 ,  1,-49 ,  8],[ 29 , -8, 98 ,-27],[1, 1,0, 1],[ 43 , -9,196 ,-41],[-13 ,  4,-49 , 15]]]
-CosetReps495 = [Matrix(2,2,g) for g in [[1, 0,0, 1],[ 8 ,-1,49, -6],[ -76 ,   9,-245 ,  29],[ 1 ,-1, 0 , 1],[-13 ,  4,-49 , 15],[-20 ,  9,-49 , 22]]]
-Tr357_mat, Tr357_ims = gen_to_mat([D7*gam for gam in CosetReps357],C35,C) 
+CosetReps351 = [Matrix(2,2,g) for g in [[1,0,0,1],[8,-3, 35, -13],[ 29, -21,105, -76],[ 29,-17, 70, -41],[-13, 3,-35,8],[ -76, 21,-105,29],[-41,  17,-70,  29]]]
+CosetReps357 = [Matrix(2,2,g) for g in [[1,0,0,7],[1, 1,0, 7],[ 8,-3,245,-91],[ 1,-1,0,7],[-13,3,-245, 56],[1,2,0,7],[ 43,-16,245,-91]]]
+CosetReps491 = [Matrix(2,2,g) for g in [[1, 0,0, 1],[-13,2,-98,15],[ 50,-11,441, -97],[ 155,-114,1274,-937],[-41,11,-343,92],[ -83,34,-686,281]]]
+CosetReps495 = [Matrix(2,2,g) for g in [[1, 0,0, 5],[1, 1,0, 5],[ 1, -1, 0,  5],[1, 2,0, 5],[ 50,-11,2205, -485],[71,-32,2940,-1325]]]
+Tr357_mat, Tr357_ims = gen_to_mat([gam for gam in CosetReps357],C35,C) 
 Tr351_mat, Tr351_ims = gen_to_mat(CosetReps351,C35,C)
 Tr491_mat, Tr491_ims = gen_to_mat(CosetReps491,C49,C)
-Tr495_mat, Tr495_ims = gen_to_mat([D5*gam for gam in CosetReps495],C49,C) 
+Tr495_mat, Tr495_ims = gen_to_mat([gam for gam in CosetReps495],C49,C) 
 assert [Tr357_mat.rank(),Tr351_mat.rank(),Tr491_mat.rank(),Tr495_mat.rank()] == [14,14,6,6]
 Tr357_mat = Tr357_mat/7 #Div by 7 cancels contribution from the determinant of D7
 Tr495_mat = Tr495_mat/5 #Div by 5 cancels contribution from the determinant of D5
@@ -94,7 +92,7 @@ I6 = matrix.identity(6)
 def Bdmatrix(CM,CMmat,t):
     ims = [CM(sum([ s[0] * sum([ mm[0]*mm[1].manin_symbol_rep()
            for mm in s[1].apply([t,0,0,1])])
-           for s in c.modular_symbol_rep()])) for c in Cb]
+           for s in c.modular_symbol_rep()])) for c in C.basis()]
     return Matrix([(CMmat\vector(im.list())).list() for im in ims]).transpose()*t #Mult. by t cancels the contribution from the determinant
 
 B351_mat = Bdmatrix(C35,C35mat,1)
@@ -432,11 +430,13 @@ def fixed_cusp_forms_QQ(a2s,a3s,Tpluslist,Kf_to_KKs,prec,Gamma_fixed_spaces,Bmat
    
 fs,tos=fixed_cusp_forms_QQ(a2s,a3s,Tpluslist,Kf_to_KKs,prec,Gamma_fixed_spaces,Bs,[P2,Pm1],[2,-1])
 
-assert all([len(fs[0]) == 6, len(fs[1]) == 8, len(fs[2]) == 5])
+assert all([len(fs[0]) == 6, len(fs[1]) == 5, len(fs[2]) == 8])
 
+#This function turns list of coefficients into q-expansion. Also multiplies with denominator to obtain integral coefficients. 
 def int_qexp(f):
     den=QQ(LCM([f[i].denominator() for i in range(prec)]))
     return den*sum([f[i]*q7p^i for i in range(prec)])
+    
 fs_qexps=[[int_qexp(f) for f in AA] for AA in fs]
 
 
@@ -449,13 +449,12 @@ def intersection_of_quadrics(fs,prec2):
     polsX = [sum([c*m.change_ring(Q7plus) for c,m in zip(relmat.kernel().basis()[i],mons2)]) for i in range(relmat.kernel().dimension())]
     dens = [p.denominator() for p in polsX]
     polsX = [R(dens[i]*polsX[i]) for i in range(len(polsX))]
-    return Curve(polsX)
+    return polsX
 
-Xb5ns7=intersection_of_quadrics(fs_qexps[0],50)
-X1=intersection_of_quadrics(fs_qexps[1],50)
-X2=intersection_of_quadrics(fs_qexps[2],50)
-assert all([Xb5ns7.genus() == 6, X1.genus() == 8, X2.genus() == 5])
-print(Xb5ns7)
-print(X1)
-print(X2)
-print(tos)
+Xb5ns7=intersection_of_quadrics(fs_qexps[0],29)
+X2=intersection_of_quadrics(fs_qexps[1],29)
+X1=intersection_of_quadrics(fs_qexps[2],29)
+print("The equations defining X(b5,ns7) are", Xb5ns7)
+print("The equations defining X1 are", X1)
+print("The equations defining X2 are",X2)
+
