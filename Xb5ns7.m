@@ -191,7 +191,6 @@ KXgens:=[KX!(R.i/R.dim) : i in [1..(dim-1)]] cat [KX!1]; // The functions x_i/x_
 		d:=0;
 		while #nds eq 0 do
 			d:=d+1;
-            d;
 			mons:=MonomialsOfDegree(R,d);
 			monsq:=[Evaluate(mon,qexps) : mon in mons];
 			V:=VectorSpace(K,2*#mons);
@@ -228,9 +227,9 @@ return phi;
 end function;
         
 Xns7:=Curve(ProjectiveSpace(Rationals(),1));
-XtoXns7:=MapToP1FromqExp(Xb5ns7,Bexp,Xns7,n7,6);
+Xb5ns7toXns7:=MapToP1FromqExp(Xb5ns7,Bexp,Xns7,n7,6);
 CR<x,y>:=CoordinateRing(AmbientSpace(Xns7));
 Fns7:=FunctionField(Xns7);
 jns7:=Evaluate(f,Fns7!(x/y))^3/Evaluate(g,Fns7!(x/y))^7;
-jX:=Pullback(XtoXns7,jns7);
-print "We find the following map X(b5,ns7) to X(ns7): ", XtoXns7;
+jX:=Pullback(Xb5ns7toXns7,jns7);
+print "We find the following map X(b5,ns7) to X(ns7): ", Xb5ns7toXns7;
