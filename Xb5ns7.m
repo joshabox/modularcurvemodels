@@ -1,11 +1,126 @@
-/* In this Magma file, we first verify that our model for X(b5,ns7) 
-is isomorphic to the Derickx--Najman--Siksek model.
-We then compute the map X(b5,ns7) --> X(ns7) explicitly. */
+/* 
+In this Magma file, we check the following things:
 
-//We copy-paste the equations for X(b5,ns7) from the output of the Sage file.
-P<X0,X1,X2,X3,X4,X5>:=ProjectiveSpace(Rationals(),5);
-Xb5ns7:=Curve(P,[14*X0^2 + 12*X2*X3 - 16*X3^2 - 14*X2*X4 + 30*X3*X4 - 11*X4^2 + 28*X2*X5 - 58*X3*X5 + 40*X4*X5 - 28*X5^2, 7*X0*X1 - 2*X2*X4 - 4*X3*X4 + 2*X4^2 + 12*X3*X5 - 7*X4*X5 + 10*X5^2, 14*X1^2 - 4*X2*X3 + 16*X3^2 + 10*X2*X4 + 14*X3*X4 - 21*X4^2 + 4*X2*X5 - 58*X3*X5 + 64*X4*X5 - 66*X5^2, 2*X0*X2 - 2*X0*X3 + 2*X1*X3 - 5*X0*X4 - 6*X1*X4 + 8*X0*X5 + 4*X1*X5, 4*X1*X2 - 2*X0*X3 - 6*X1*X3 - X0*X4 + 3*X1*X4 + 3*X0*X5 - 2*X1*X5, 8*X2^2 - 20*X2*X3 + 16*X3^2 - 14*X2*X4 + 14*X3*X4 - 21*X4^2 + 28*X2*X5 - 42*X3*X5 + 56*X4*X5 - 28*X5^2]);
+(1) We first check the assertions made in the final section of the paper
+(2) We then compute as a sanity check the genera of the curves found in Sage (somehow Magma is better at this)
+(3) We then implement Algorithm 2.20 from Stein's thesis and use it to obtain 
+ the coset reps used to defined the various trace functions in the Sage file
+(4) We show that our canonical model for X(b5,ns7) is isomorphic to the Derickx--Najman--Siksek model
+(5) We compute explicitly the map X(b5,ns7) --> X(ns7)
+*/
 
+//---------PART (1)-----------------------------------------------------------
+
+GL7:=GeneralLinearGroup(2,GF(7));
+SL7:=SpecialLinearGroup(2,GF(7));
+
+Gns7:=sub<GL7 | [Matrix(2,2,[a,5*b,b,a]) : a in GF(7), b in GF(7) | not [a,b] eq [0,0]]>;
+Gns7p:=sub<GL7 | Generators(Gns7) join {GL7!Matrix(2,2,[1,0,0,-1])}>; //This is G(ns7+)
+index2subs:=[H: H in AllSubgroups(Gns7p) | #Gns7p/#H eq 2];
+assert #index2subs eq 3;
+notcyclic:=[H : H in index2subs | not IsCyclic(H)];
+assert #notcyclic eq 2;
+cyclicint:=[H : H in notcyclic | IsCyclic(H meet SL7) and #(H meet SL7) eq 8];
+assert #cyclicint eq 1; //This proves uniqueness claim in Lemma
+
+Ge7:=cyclicint[1]; 
+g0:=GL7!Matrix(2,2,[61,-55,10,-9]);
+assert g0 in Ge7;
+assert Order(g0) eq 8;
+g1:=GL7!Matrix(2,2,[3,1,-10,-3]);
+assert g1 in Gns7p;
+assert not g1 in Ge7;
+phi7:=GL7!Matrix(2,2,[3,1,-10,-3]);
+assert not phi7 in Ge7;
+assert phi7 in Gns7p;
+w5:=GL7!Matrix(2,2,[ 2890, 193 ,-8685, -580 ]);
+assert w5 in Ge7;
+B:=GL7!Matrix(2,2,[6,5,-5,-4]);
+gam4:=GL7!Matrix(2,2,[4,0,0,1]);
+assert B*gam4 in Ge7;
+J:=GL7!Matrix(2,2,[1,0,0,-1]);
+assert Ge7 eq sub<GL7 | g0,B*gam4,J>;
+assert Gns7p eq sub<GL7 | g0,B*gam4,J,phi7>;
+ind7:=#SL7/#(Ge7 meet SL7);
+ind5:=5*&*[1+1/p : p in PrimeDivisors(5)];
+assert ind7*ind5 eq 42;
+
+//We check that Ge7 is isomorphic to G(e7) as defined by Freitas - le Hung - Siksek
+Ge72:=sub<GL7 | Matrix(2,2,[0,5,3,0]), Matrix(2,2,[5,0,3,2])>;
+assert IsIsomorphic(Ge7,Ge72);
+
+
+//------------PART (2)---------------------------------------------------------------------
+
+//Next, we define the curves, by copy-pasting the Sage output.
+
+P4<X0,X1,X2,X3,X4>:=ProjectiveSpace(Rationals(),4);
+Xb5e7modphi7w5:=Curve(P4,[448*X0^2 - 9*X1^2 + 9*X2^2 + 54*X2*X3 + 9*X3^2 + 112*X0*X4 + 126*X1*X4 + 7*X4^2, 16*X0*X1 - 3*X1^2 + 3*X2^2 + 6*X2*X3 + 3*X3^2 + 2*X1*X4 + 21*X4^2, 3*X1*X2 + 28*X0*X3 + 12*X1*X3 + 21*X2*X4 + 14*X3*X4]);
+
+P7<X0,X1,X2,X3,X4,X5,X6,X7>:=ProjectiveSpace(Rationals(),7);
+Xb5e7modw5:=Curve(P7,[3528*X0^2 + 177*X4*X5 + 597*X5^2 - 2716*X0*X6 - 423*X1*X6 - 6365*X2*X6 - 1918*X3*X6 - 13454*X6^2 + 2842*X0*X7 + 626*X1*X7 + 9144*X2*X7 + 3010*X3*X7 + 35252*X6*X7 - 22960*X7^2, 56*X0*X1 - 135*X4*X5 - 327*X5^2 - 140*X0*X6 - 37*X1*X6 + 2381*X2*X6 + 1890*X3*X6 + 2982*X6^2 + 910*X0*X7 + 16*X1*X7 - 3270*X2*X7 - 2758*X3*X7 - 7476*X6*X7 + 4816*X7^2, 56*X1^2 + 1215*X4*X5 + 2835*X5^2 + 11340*X0*X6 - 715*X1*X6 - 22389*X2*X6 - 12726*X3*X6 - 38290*X6^2 - 19530*X0*X7 + 820*X1*X7 + 30894*X2*X7 + 21546*X3*X7 + 99764*X6*X7 - 64624*X7^2, 168*X0*X2 - 15*X4*X5 - 3*X5^2 - 56*X0*X6 - 45*X1*X6 + 89*X2*X6 + 238*X3*X6 - 238*X6^2 + 182*X0*X7 + 52*X1*X7 - 138*X2*X7 - 406*X3*X7 + 532*X6*X7 - 224*X7^2, 56*X1*X2 - 171*X4*X5 - 315*X5^2 + 168*X0*X6 - 253*X1*X6 + 2713*X2*X6 + 2562*X3*X6 + 2086*X6^2 + 1050*X0*X7 + 260*X1*X7 - 3910*X2*X7 - 3738*X3*X7 - 5292*X6*X7 + 3584*X7^2, 56*X2^2 + 87*X4*X5 + 147*X5^2 - 364*X0*X6 + 141*X1*X6 - 1285*X2*X6 - 1582*X3*X6 - 714*X6^2 - 266*X0*X7 - 148*X1*X7 + 1894*X2*X7 + 2170*X3*X7 + 1764*X6*X7 - 1232*X7^2, 1764*X0*X3 - 579*X4*X5 - 1050*X5^2 + 1505*X0*X6 - 774*X1*X6 + 7009*X2*X6 + 6083*X3*X6 + 7021*X6^2 + 1456*X0*X7 + 851*X1*X7 - 9837*X2*X7 - 8582*X3*X7 - 15778*X6*X7 + 9044*X7^2, 28*X1*X3 + 9*X4*X5 + 6*X5^2 + 357*X0*X6 - X1*X6 + 74*X2*X6 + 161*X3*X6 - 63*X6^2 - 364*X0*X7 - 20*X1*X7 - 144*X2*X7 - 168*X3*X7 + 210*X6*X7 - 140*X7^2, 84*X2*X3 - 15*X4*X5 - 30*X5^2 - 35*X0*X6 - 27*X1*X6 + 80*X2*X6 + 133*X3*X6 + 329*X6^2 + 140*X0*X7 + 34*X1*X7 - 66*X2*X7 - 196*X3*X7 - 854*X6*X7 + 532*X7^2, 252*X3^2 + 12*X4*X5 - 30*X5^2 + 70*X0*X6 + 45*X1*X6 + 443*X2*X6 + 28*X3*X6 + 350*X6^2 - 196*X0*X7 - 59*X1*X7 - 639*X2*X7 + 14*X3*X7 - 728*X6*X7 + 280*X7^2, 18*X0*X4 - 19*X0*X5 - 12*X1*X5 - 27*X2*X5 + 17*X3*X5 - 120*X4*X6 - 66*X5*X6 + 114*X4*X7 + 54*X5*X7, 2*X1*X4 - 21*X0*X5 + 8*X1*X5 + 7*X2*X5 - 21*X3*X5 + 28*X4*X6 + 56*X5*X6 - 28*X4*X7 - 84*X5*X7, 6*X2*X4 + 7*X0*X5 + 3*X2*X5 + 7*X3*X5, 9*X3*X4 - 28*X0*X5 - 3*X1*X5 - 9*X2*X5 + 8*X3*X5 - 39*X4*X6 - 30*X5*X6 + 33*X4*X7 + 27*X5*X7, 63*X4^2 + 426*X4*X5 + 690*X5^2 + 1120*X0*X6 + 207*X1*X6 - 4405*X2*X6 - 2702*X3*X6 - 7000*X6^2 - 2464*X0*X7 - 263*X1*X7 + 6057*X2*X7 + 4298*X3*X7 + 18172*X6*X7 - 11984*X7^2]);
+
+P5<X0,X1,X2,X3,X4,X5>:=ProjectiveSpace(Rationals(),5);
+Xb5ns7:=Curve(P5,[14*X0^2 + 12*X2*X3 - 16*X3^2 - 14*X2*X4 + 30*X3*X4 - 11*X4^2 + 28*X2*X5 - 58*X3*X5 + 40*X4*X5 - 28*X5^2, 7*X0*X1 - 2*X2*X4 - 4*X3*X4 + 2*X4^2 + 12*X3*X5 - 7*X4*X5 + 10*X5^2, 14*X1^2 - 4*X2*X3 + 16*X3^2 + 10*X2*X4 + 14*X3*X4 - 21*X4^2 + 4*X2*X5 - 58*X3*X5 + 64*X4*X5 - 66*X5^2, 2*X0*X2 - 2*X0*X3 + 2*X1*X3 - 5*X0*X4 - 6*X1*X4 + 8*X0*X5 + 4*X1*X5, 4*X1*X2 - 2*X0*X3 - 6*X1*X3 - X0*X4 + 3*X1*X4 + 3*X0*X5 - 2*X1*X5, 8*X2^2 - 20*X2*X3 + 16*X3^2 - 14*X2*X4 + 14*X3*X4 - 21*X4^2 + 28*X2*X5 - 42*X3*X5 + 56*X4*X5 - 28*X5^2]);
+
+//No error message above means the equations indeed define (irreducible) curves.
+assert &and[Genus(Xb5ns7) eq 6, Genus(Xb5e7modphi7w5) eq 5, Genus(Xb5e7modw5) eq 8];
+
+
+//--------------------------------PART (3)--------------------------------------------------------------------
+
+//CosetReps and EquivCheck together form an implementation of Algorithm 2.20 in Stein's thesis.
+
+//This function checks whether M1 and M2 (in Gamma_0(M) for M | N and t | (N/t) ) are in the same Gamma_0(N/t,t)-coset.
+EquivCheck:=function(M1,M2,N,t);
+P1t:=ProjectiveSpace(Integers(t),1);
+P1Nt:=ProjectiveSpace(Integers(Integers()!(N/t)),1);
+rs1:=RowSequence(M1);
+rs2:=RowSequence(M2);
+if not t eq 1 then
+    tf1:=(P1t!rs1[1] eq P1t!rs2[1]);
+else tf1:=true;
+end if;
+if not t eq N then
+    tf2:=(P1Nt!rs1[2] eq P1Nt!rs2[2]);
+else tf2:=true;
+end if;
+return &and[tf1,tf2];
+end function;
+
+//Input are integers N,M,t such that M divides N and t divides N/M, and
+//an integer K such that all output matrices have bottom right coefficient \equiv 1 mod K.
+//This removes the need for multiplying with character values in the def on the trace map.
+//This is not the fastest possible implementation, and it might be slow when
+//[Gamma_0(M) : Gamma_0(N)] is large. Instead we have tried to ensure that the 
+//found coset representatives have small coefficients. 
+
+CosetReps:=function(N,M,t,K)
+T:=Matrix(2,2,[1,0,0,t]);
+ind:=N/M*(&*[(1+1/p) : p in PrimeDivisors(N)])/(&*[(1+1/p) : p in PrimeDivisors(M)]);
+//This is the index [Gamma_0(M) : Gamma_0(N)]
+gens:=[Matrix(g) : g in Generators(Gamma0(M))] cat [Matrix(g^-1) : g in Generators(Gamma0(M))];
+cosetreps:=[];
+prodofgens:=[IdentityMatrix(Integers(),2)];
+while #cosetreps lt ind do
+    for g in [h : h in prodofgens | h[2,2] mod K eq 1] do
+        if &and[not EquivCheck(g,R,N,t) : R in cosetreps] then
+            Append(~cosetreps,g);
+        end if;   
+    end for;
+    prodofgens:=[g*a : a in prodofgens, g in gens];
+    assert &and[Determinant(h) eq 1 : h in prodofgens];
+end while;
+return [T*A : A in cosetreps];
+end function;
+
+print "The coset reps defining Tr_1^{245/35} are",CosetReps(5*7^2,35,1,7);
+print "The coset reps defining Tr_7^{245/35} are",CosetReps(5*7^2,35,7,7);
+print "The coset reps defining Tr_1^{245/49} are",CosetReps(5*7^2,49,1,7);
+print "The coset reps defining Tr_5^{245/49} are",CosetReps(5*7^2,49,5,7);
+
+
+//----------------------PART (4)--------------------------------------------------------
 
 //The below function is code written by Derickx--Najman--Siksek.
 //It takes as input a curve XX isomorphic to X(b5,ns7)
@@ -104,6 +219,9 @@ print "This is the exact same model as found by Derick--Najman--Siksek.";
 print "The map from X(b5,ns7) to the planar model is linear: ",Expand(Xb5ns7toX); 
 //By comparison, the map from Le Hung's model to X found by Derickx--Najman--Siksek
 //is so complicated that even evaluating points is too time-expensive.
+
+
+//-----------------------------------PART (5)--------------------------------------------------------------
 
 //Next, we set about computing the j-invariant on Xb5ns7 by first computing the map to X(ns7).
 
