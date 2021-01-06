@@ -42,8 +42,7 @@ J:=GL7!Matrix(2,2,[1,0,0,-1]);
 assert Ge7 eq sub<GL7 | g0,B*gam4,J>;
 assert Gns7p eq sub<GL7 | g0,B*gam4,J,phi7>;
 ind7:=#SL7/#(Ge7 meet SL7);
-ind5:=5*&*[1+1/p : p in PrimeDivisors(5)];
-assert ind7*ind5 eq 42;
+assert ind7 eq 42;
 
 //We check that Ge7 is isomorphic to G(e7) as defined by Freitas - le Hung - Siksek
 Ge72:=sub<GL7 | Matrix(2,2,[0,5,3,0]), Matrix(2,2,[5,0,3,2])>;
